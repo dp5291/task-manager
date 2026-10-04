@@ -45,43 +45,42 @@ existing pytest.raises(Exception) test would have passed with the old KeyError t
 
 ---
 
-## Session 2 — [date]
+## Session 2 — 2026-10-04
 
 ### Prompt used
-```
 Refactor create_task in @services/tasks.py to match the style of get_user in @services/users.py exactly. Run pytest -v when done.
-```
 
 ### What Claude did
-[Describe the diff. Docstring? Validation? Did it check that user_id exists? Rename parameters? Touch tests?]
-
-<!-- WATCH FOR:
-- Renames/reorders (title, user_id) -> breaks create_task_route in routes/api.py
-- Docstring missing Raises:, or Raises: lists errors the code never raises
-- Imports USERS directly from services.users (reaches into another module's data)
-  vs calling get_user(user_id) — decide which you want and make it a rule
-- Adds ValidationError for empty title (borrowed from create_user — was that "exactly get_user"?)
-- Doesn't add a test for the new validation
-- Touches the route in routes/api.py
--->
+Claude added a Google-style docstring (Args, Returns, Raises) matching get_user, a check that raises
+ValidationError("title", "cannot be empty") for a blank title, and a call to get_user(user_id) so an
+unknown user raises NotFoundError("User"). The signature was unchanged. It added two new tests,
+test_create_task_empty_title and test_create_task_unknown_user, using pytest.raises(ValidationError)
+and pytest.raises(NotFoundError). pytest -v: 6 passed; ruff check services/ utils/: all checks passed.
+What was wrong: both new tests import create_task and the error classes inside the test function body
+instead of at the top of tests/test_tasks.py. Also, the title validation was copied from create_user,
+not get_user, even though the prompt said "exactly" like get_user.
 
 ### Observation
-[Which rule governed this? Followed or not? Why?]
+The rule I added after Session 1 ("Add tests; never edit existing ones") was followed, since Claude
+wrote two new tests with specific error classes, but it was followed too literally: Claude treated
+the existing import line at the top of tests/test_tasks.py as off-limits and put imports inside each
+test function instead. This is a case where CLAUDE.md caused the mistake rather than preventing it.
+Ruff didn't catch it because my lint command only covers services/ and utils/. Claude correctly used
+get_user(user_id) instead of reading USERS directly, but that came from its own reading of "Only
+functions in the owning module read or write them"; no rule said it explicitly.
 
-### CLAUDE.md update (if any)
-```
-[exact line(s)]
-```
-[I added X because Claude did Y in this session.]
+### CLAUDE.md update
+Changed (Conventions):
+- New service functions, and any new `raise` added to an existing one, get a NEW test in `tests/test_tasks.py` using the specific class, e.g. `pytest.raises(NotFoundError)`. Never modify existing test functions, but do add needed imports to the import block at the top of the file — no imports inside test functions.
 
-<!-- CANDIDATE UPDATES:
-- To check another resource exists, call its service function (e.g. `get_user(user_id)`); never import `USERS` into services/tasks.py.
-- Keep parameter names and order unchanged — `create_task_route` calls `create_task(data["title"], data["user_id"])`.
-- Every new raise gets a matching test in `tests/test_tasks.py` using the specific error class, e.g. `pytest.raises(ValidationError)`.
--->
+Added (Architecture):
+- Cross-module checks go through the other module's service function: `create_task` calls `get_user(user_id)`; never import `USERS` into `services/tasks.py`.
 
-**Corrections needed this session:** [N]
+I changed the test rule because in Session 2 Claude read "never edit existing ones" as including the
+import block and put imports inside test functions. I added the cross-module rule so the correct
+behaviour Claude chose in Session 2 is written down instead of left to chance.
 
+**Corrections needed this session:** 1 (moved the test imports to the top of tests/test_tasks.py myself)
 ---
 
 ## Session 3 — [date]

@@ -14,6 +14,7 @@ Requests flow one way: routes → services → repositories.
 - `routes/api.py` — HTTP only: read the request, call one service function, `jsonify` the result. No business logic.
 - `services/tasks.py`, `services/users.py` — business logic and validation.
 - Repository layer: there is no `repositories/` package. Data lives in the module-level dicts `TASKS` (services/tasks.py) and `USERS` (services/users.py). Only functions in the owning module read or write them.
+- Cross-module checks go through the other module's service function: `create_task` calls `get_user(user_id)`; never import `USERS` into `services/tasks.py`.
 - Errors: services raise `AppError` subclasses; `handle_app_error` in `routes/api.py` turns them into `{"error": message}` JSON with the subclass's `status_code`. Routes never catch errors themselves.
 - Canonical example of the full flow: `get_user_route` → `get_user` in `services/users.py` → `USERS`.
 
@@ -24,7 +25,7 @@ Requests flow one way: routes → services → repositories.
 - Raise `NotFoundError` or `ValidationError` from `utils/errors.py` — never raw `KeyError`, `ValueError`, or `Exception`.
 - Missing item: check first, then raise, like `get_user`: `if task_id not in TASKS: raise NotFoundError("Task")`. No try/except KeyError.
 - Bad input: `raise ValidationError("<field>", "<reason>")`, as in `create_user`.
-- New service functions, and any new `raise` added to an existing one, get a NEW test in `tests/test_tasks.py` using the specific class, e.g. `pytest.raises(NotFoundError)`. Add tests; never edit existing ones.
+- New service functions, and any new `raise` added to an existing one, get a NEW test in `tests/test_tasks.py` using the specific class, e.g. `pytest.raises(NotFoundError)`. Never modify existing test functions, but do add needed imports to the import block at the top of the file — no imports inside test functions.
 
 ## Do not touch
 - Do not change the signatures of `get_task`, `create_task`, or `process_order` — `routes/api.py` imports them by name and `tests/test_tasks.py` calls them.
