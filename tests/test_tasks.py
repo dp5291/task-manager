@@ -1,5 +1,5 @@
 import pytest
-from services.tasks import create_task, get_task, process_order
+from services.tasks import create_task, get_task, get_tasks_for_user, process_order
 from utils.errors import NotFoundError, ValidationError
 
 def test_process_order_valid():
@@ -27,3 +27,14 @@ def test_create_task_unknown_user():
     
     with pytest.raises(NotFoundError):
         create_task("New task", 999)
+
+def test_get_tasks_for_user_valid():
+    result = get_tasks_for_user(1)
+    ids = [task["id"] for task in result]
+    assert 1 in ids and 2 in ids
+    assert 3 not in ids
+    assert all(task["user_id"] == 1 for task in result)
+
+def test_get_tasks_for_user_unknown_user():
+    with pytest.raises(NotFoundError):
+        get_tasks_for_user(999)

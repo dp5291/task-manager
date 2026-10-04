@@ -26,6 +26,7 @@ Requests flow one way: routes → services → repositories.
 - Missing item: check first, then raise, like `get_user`: `if task_id not in TASKS: raise NotFoundError("Task")`. No try/except KeyError.
 - Bad input: `raise ValidationError("<field>", "<reason>")`, as in `create_user`.
 - New service functions, and any new `raise` added to an existing one, get a NEW test in `tests/test_tasks.py` using the specific class, e.g. `pytest.raises(NotFoundError)`. Never modify existing test functions, but do add needed imports to the import block at the top of the file — no imports inside test functions.
+- List queries (e.g. `get_tasks_for_user`) return `[]` for an existing user with no tasks; test that case by creating a user with `create_user` first, not by relying on seed data.
 
 ## Do not touch
 - Do not change the signatures of `get_task`, `create_task`, or `process_order` — `routes/api.py` imports them by name and `tests/test_tasks.py` calls them.
