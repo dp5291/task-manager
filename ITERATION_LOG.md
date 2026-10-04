@@ -12,45 +12,36 @@ HOW TO USE THIS FILE (delete these comments before submitting)
   CLAUDE.md is reloaded.
 -->
 
-## Session 1 — [date]
+## Session 1 — 2026-10-04
 
 ### Prompt used
-```
 Add error handling to the get_task function in @services/tasks.py. Do not change the function signature. Run pytest -v when done.
-```
 
 ### What Claude did
-[Describe the diff. Which exception did it raise? Did tests pass? What was correct, what was wrong?]
-
-<!-- WATCH FOR (the correct answer looks like get_user):
-    if task_id not in TASKS:
-        raise NotFoundError("Task")
-    return TASKS[task_id]
-  plus a Google docstring with Raises: NotFoundError, and the import from utils.errors.
-- Uses try/except KeyError instead of the check-first pattern
-- Message is "Task 999 not found" or similar instead of NotFoundError("Task")
-- Changes -> dict to -> dict | None / Optional[dict]  (counts as a signature change)
-- Also "fixes" process_order even though the prompt only named get_task
-- Edits test_get_task_invalid to pytest.raises(NotFoundError)  (breaks Do-not-touch rule)
-- Runs ruff check . --fix and rewrites tests/routes
--->
+Claude imported NotFoundError from utils/errors.py and added a check-first guard to get_task:
+`if task_id not in TASKS: raise NotFoundError("Task")`, matching get_user exactly. It also added a
+Google-style docstring with Args, Returns and Raises sections. The signature (`-> dict`) was unchanged,
+process_order was left alone, and existing tests were not edited. pytest -v: 4 passed.
+What was missing: no test verifies that NotFoundError is raised. test_get_task_invalid uses
+pytest.raises(Exception), which passed before the change too (on KeyError), so the new behaviour is untested.
 
 ### Observation
-[Which CLAUDE.md rule governed this (quote it)? Was it followed? If not, why — was the rule too vague, missing, or buried?]
+The Conventions rules "Missing item: check first, then raise, like get_user" and "Raise NotFoundError or
+ValidationError from utils/errors.py" were followed exactly; spelling out the one-line pattern left
+nothing to guess. The Do-not-touch rule on signatures was also followed. The gap was in my own rule:
+"New service functions get a test in tests/test_tasks.py" only covers new functions, so Claude had no
+instruction to test a new raise added to an existing function.
 
-### CLAUDE.md update (if any)
-```
-[paste the exact line(s) you added or changed]
-```
-[I added X because Claude did Y in this session.]
+### CLAUDE.md update
+Changed:
+- New service functions get a test in `tests/test_tasks.py`.
+To:
+- New service functions, and any new `raise` added to an existing one, get a NEW test in `tests/test_tasks.py` using the specific class, e.g. `pytest.raises(NotFoundError)`. Add tests; never edit existing ones.
 
-<!-- CANDIDATE UPDATES (use only if they match what you saw):
-- Only change the functions the prompt names; leave `process_order` alone unless asked.
-- The return type is part of the signature: keep `-> dict`, never `-> dict | None`.
-- `NotFoundError` takes the resource name only: `NotFoundError("Task")`, not a full message.
--->
+I changed this because in Session 1 Claude added NotFoundError to get_task but no test checked it; the
+existing pytest.raises(Exception) test would have passed with the old KeyError too.
 
-**Corrections needed this session:** [N]
+**Corrections needed this session:** 0
 
 ---
 
