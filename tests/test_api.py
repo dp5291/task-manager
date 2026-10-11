@@ -62,3 +62,48 @@ def test_create_task_route_invalid_priority(priority):
     response = app.test_client().post("/api/tasks", json={"title": "Bad", "user_id": 1, "priority": priority})
     assert response.status_code == 422
     assert response.get_json() == {"error": "Invalid priority: must be an integer from 1 to 5"}
+
+BAD_BODIES = [
+    {},
+    {"data": "not json", "content_type": "text/plain"},
+    {"data": "{", "content_type": "application/json"},
+    {"json": [1]},
+]
+
+@pytest.mark.parametrize("kwargs", BAD_BODIES)
+def test_create_task_route_bad_body(kwargs):
+    response = app.test_client().post("/api/tasks", **kwargs)
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid body: must be a JSON object"}
+
+@pytest.mark.parametrize("kwargs", BAD_BODIES)
+def test_update_task_route_bad_body(kwargs):
+    client = app.test_client()
+    task_id = client.post("/api/tasks", json={"title": "Bad body", "user_id": 1}).get_json()["id"]
+    response = client.patch(f"/api/tasks/{task_id}", **kwargs)
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid body: must be a JSON object"}
+
+@pytest.mark.parametrize("body", [{"user_id": 1}, {"title": None, "user_id": 1}, {"title": 123, "user_id": 1}])
+def test_create_task_route_non_string_title(body):
+    response = app.test_client().post("/api/tasks", json=body)
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid title: must be a string"}
+
+@pytest.mark.parametrize("title", ["", "   "])
+def test_create_task_route_empty_title(title):
+    response = app.test_client().post("/api/tasks", json={"title": title, "user_id": 1})
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid title: cannot be empty"}
+
+@pytest.mark.parametrize("body", [
+    {"title": "No user"},
+    {"title": "Bad user", "user_id": "1"},
+    {"title": "Bad user", "user_id": 1.5},
+    {"title": "Bad user", "user_id": None},
+    {"title": "Bad user", "user_id": True},
+])
+def test_create_task_route_invalid_user_id(body):
+    response = app.test_client().post("/api/tasks", json=body)
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid user_id: must be an integer"}

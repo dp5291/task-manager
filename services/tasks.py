@@ -52,13 +52,17 @@ def create_task(title: str, user_id: int, priority: int = 3) -> dict:
         The newly created task record.
 
     Raises:
-        ValidationError: If title is empty or priority is not an integer
-            from 1 to 5.
+        ValidationError: If title is not a string or is empty, priority is
+            not an integer from 1 to 5, or user_id is not an integer.
         NotFoundError: If no user exists with the given ID.
     """
+    if not isinstance(title, str):
+        raise ValidationError("title", "must be a string")
     if not title or not title.strip():
         raise ValidationError("title", "cannot be empty")
     _check_priority(priority)
+    if isinstance(user_id, bool) or not isinstance(user_id, int):
+        raise ValidationError("user_id", "must be an integer")
     get_user(user_id)
     new_id = max(TASKS.keys()) + 1
     TASKS[new_id] = {"id": new_id, "title": title,

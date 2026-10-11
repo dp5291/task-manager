@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from services.tasks import get_task, create_task, process_order, list_tasks, update_task
 from services.users import get_user
-from utils.errors import AppError
+from utils.errors import AppError, ValidationError
 
 api = Blueprint("api", __name__)
 
@@ -9,20 +9,26 @@ api = Blueprint("api", __name__)
 def handle_app_error(e):
     return jsonify({"error": e.message}), e.status_code
 
+def _get_json_object() -> dict:
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        raise ValidationError("body", "must be a JSON object")
+    return data
+
 @api.route("/tasks/<int:task_id>", methods=["GET"])
 def get_task_route(task_id):
     return jsonify(get_task(task_id))
 
 @api.route("/tasks/<int:task_id>", methods=["PATCH"])
 def update_task_route(task_id):
-    data = request.get_json(silent=True) or {}
+    data = _get_json_object()
     return jsonify(update_task(task_id, data.get("priority")))
 
 @api.route("/tasks", methods=["POST"])
 def create_task_route():
-    data = request.get_json()
+    data = _get_json_object()
     extra = {"priority": data["priority"]} if "priority" in data else {}
-    return jsonify(create_task(data["title"], data["user_id"], **extra)), 201
+    return jsonify(create_task(data.get("title"), data.get("user_id"), **extra)), 201
 
 @api.route("/tasks", methods=["GET"])
 def list_tasks_route():

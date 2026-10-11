@@ -95,3 +95,13 @@ def test_update_task_invalid_priority(priority):
     created = create_task("Bad update", 1)
     with pytest.raises(ValidationError):
         update_task(created["id"], priority)
+
+@pytest.mark.parametrize("title", [None, 123])
+def test_create_task_non_string_title(title):
+    with pytest.raises(ValidationError):
+        create_task(title, 1)
+
+@pytest.mark.parametrize("user_id", ["1", 1.5, None, True])
+def test_create_task_invalid_user_id(user_id):
+    with pytest.raises(ValidationError):
+        create_task("Bad user", user_id)
