@@ -10,7 +10,7 @@ Every session below touched more than one file and was run in Plan Mode (Shift+T
 
 | Session # | Prompt summary (≤15 words) | Did you amend the plan? | What you changed | Did output match amended plan? |
 |---|---|---|---|---|
-| 1 | Add validated `priority` (default 3) to `TASKS` and `create_task`, with tests | [Yes/No] | [exact amendment + why] | [Yes/Partially/No] |
+| 1 | Add validated `priority` (default 3) to `TASKS` and `create_task`, with tests | No | No edits to the plan itself. During planning Claude quoted the CLAUDE.md rule "Do not change the signatures of `create_task`" and asked how to handle it; I chose a trailing `priority: int = 3`. I also kept `routes/api.py` out of scope (services + tests only). The plan already rejected bools (`isinstance(priority, bool)`) and tested 0, 6, -1, "high", 2.5, None, True, so nothing needed adding. Note: the plan also added `"priority": 3` to the `TASKS` seed records, which CLAUDE.md forbids, but Claude didn't flag that conflict the way it flagged the signature one; I accepted it because every record needs a priority. | Yes — diff matched every plan step; only `services/tasks.py` and `tests/test_tasks.py` changed; pytest -q 18 passed; ruff clean |
 | 2 | Add `list_tasks` and `GET /tasks?priority=n` filter with tests | [Yes/No] | [ ] | [ ] |
 | 3 | Add `update_task` and `PATCH /tasks/<id>` for priority with tests | [Yes/No] | [ ] | [ ] |
 | 4 | `POST /tasks` accepts priority; route tests in `tests/test_api.py` | [Yes/No] | [ ] | [ ] |

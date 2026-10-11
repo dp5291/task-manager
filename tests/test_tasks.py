@@ -38,3 +38,21 @@ def test_get_tasks_for_user_valid():
 def test_get_tasks_for_user_unknown_user():
     with pytest.raises(NotFoundError):
         get_tasks_for_user(999)
+
+def test_seed_tasks_have_priority():
+    for task_id in (1, 2, 3):
+        priority = get_task(task_id)["priority"]
+        assert isinstance(priority, int) and 1 <= priority <= 5
+
+def test_create_task_default_priority():
+    result = create_task("Default priority", 1)
+    assert result["priority"] == 3
+
+def test_create_task_with_priority():
+    assert create_task("Urgent task", 1, priority=1)["priority"] == 1
+    assert create_task("Low task", 1, priority=5)["priority"] == 5
+
+@pytest.mark.parametrize("priority", [0, 6, -1, "high", 2.5, None, True])
+def test_create_task_invalid_priority(priority):
+    with pytest.raises(ValidationError):
+        create_task("Bad priority", 1, priority=priority)
