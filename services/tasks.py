@@ -65,6 +65,25 @@ def create_task(title: str, user_id: int, priority: int = 3) -> dict:
                      "done": False, "user_id": user_id, "priority": priority}
     return TASKS[new_id]
 
+def update_task(task_id: int, priority: int) -> dict:
+    """Update a task's priority.
+
+    Args:
+        task_id: The unique identifier for the task.
+        priority: New priority, an integer from 1 (urgent) to 5 (low).
+
+    Returns:
+        The updated task record.
+
+    Raises:
+        NotFoundError: If no task exists with the given ID.
+        ValidationError: If priority is not an integer from 1 to 5.
+    """
+    task = get_task(task_id)
+    _check_priority(priority)
+    task["priority"] = priority
+    return task
+
 def get_tasks_for_user(user_id: int) -> list[dict]:
     """Retrieve all tasks owned by a user.
 

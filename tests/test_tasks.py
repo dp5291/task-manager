@@ -1,5 +1,5 @@
 import pytest
-from services.tasks import create_task, get_task, get_tasks_for_user, list_tasks, process_order
+from services.tasks import create_task, get_task, get_tasks_for_user, list_tasks, process_order, update_task
 from utils.errors import NotFoundError, ValidationError
 
 def test_process_order_valid():
@@ -79,3 +79,19 @@ def test_list_tasks_filter_by_priority_string():
 def test_list_tasks_invalid_priority(priority):
     with pytest.raises(ValidationError):
         list_tasks(priority)
+
+def test_update_task_priority():
+    created = create_task("Reprioritize me", 1)
+    result = update_task(created["id"], 1)
+    assert result["priority"] == 1
+    assert get_task(created["id"])["priority"] == 1
+
+def test_update_task_unknown_task():
+    with pytest.raises(NotFoundError):
+        update_task(999, 2)
+
+@pytest.mark.parametrize("priority", [0, 6, -1, "high", 2.5, None, True])
+def test_update_task_invalid_priority(priority):
+    created = create_task("Bad update", 1)
+    with pytest.raises(ValidationError):
+        update_task(created["id"], priority)
