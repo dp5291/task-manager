@@ -1,5 +1,5 @@
 import pytest
-from services.tasks import create_task, get_task, get_tasks_for_user, process_order
+from services.tasks import create_task, get_task, get_tasks_for_user, list_tasks, process_order
 from utils.errors import NotFoundError, ValidationError
 
 def test_process_order_valid():
@@ -56,3 +56,26 @@ def test_create_task_with_priority():
 def test_create_task_invalid_priority(priority):
     with pytest.raises(ValidationError):
         create_task("Bad priority", 1, priority=priority)
+
+def test_list_tasks_no_filter_returns_all():
+    ids = [task["id"] for task in list_tasks()]
+    assert 1 in ids and 2 in ids and 3 in ids
+
+def test_list_tasks_filter_by_priority():
+    created = create_task("Priority two", 1, priority=2)
+    result = list_tasks(2)
+    ids = [task["id"] for task in result]
+    assert created["id"] in ids
+    assert 1 not in ids
+    assert all(task["priority"] == 2 for task in result)
+
+def test_list_tasks_filter_by_priority_string():
+    created = create_task("Priority four", 1, priority=4)
+    result = list_tasks("4")
+    assert created["id"] in [task["id"] for task in result]
+    assert all(task["priority"] == 4 for task in result)
+
+@pytest.mark.parametrize("priority", [0, 6, "abc", "", "-1", "2.5", True])
+def test_list_tasks_invalid_priority(priority):
+    with pytest.raises(ValidationError):
+        list_tasks(priority)

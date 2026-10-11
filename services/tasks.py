@@ -28,6 +28,18 @@ def get_task(task_id: int) -> dict:
         raise NotFoundError("Task")
     return TASKS[task_id]
 
+def _check_priority(priority: int) -> None:
+    """Validate a task priority.
+
+    Args:
+        priority: The value to check; must be an integer from 1 to 5.
+
+    Raises:
+        ValidationError: If priority is a bool, not an int, or outside 1-5.
+    """
+    if isinstance(priority, bool) or not isinstance(priority, int) or not 1 <= priority <= 5:
+        raise ValidationError("priority", "must be an integer from 1 to 5")
+
 def create_task(title: str, user_id: int, priority: int = 3) -> dict:
     """Create a new task.
 
@@ -46,8 +58,7 @@ def create_task(title: str, user_id: int, priority: int = 3) -> dict:
     """
     if not title or not title.strip():
         raise ValidationError("title", "cannot be empty")
-    if isinstance(priority, bool) or not isinstance(priority, int) or not 1 <= priority <= 5:
-        raise ValidationError("priority", "must be an integer from 1 to 5")
+    _check_priority(priority)
     get_user(user_id)
     new_id = max(TASKS.keys()) + 1
     TASKS[new_id] = {"id": new_id, "title": title,
@@ -68,3 +79,23 @@ def get_tasks_for_user(user_id: int) -> list[dict]:
     """
     get_user(user_id)
     return [task for task in TASKS.values() if task["user_id"] == user_id]
+
+def list_tasks(priority: int | str | None = None) -> list[dict]:
+    """Retrieve all tasks, optionally filtered by priority.
+
+    Args:
+        priority: Integer from 1 (urgent) to 5 (low), or its digit-string
+            form (e.g. from a query string). None returns every task.
+
+    Returns:
+        A list of task records, empty if none match.
+
+    Raises:
+        ValidationError: If priority is not an integer from 1 to 5.
+    """
+    if priority is None:
+        return list(TASKS.values())
+    if isinstance(priority, str) and priority.isascii() and priority.isdigit():
+        priority = int(priority)
+    _check_priority(priority)
+    return [task for task in TASKS.values() if task["priority"] == priority]
