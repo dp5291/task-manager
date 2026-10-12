@@ -27,7 +27,7 @@ Mapping to this codebase (decided before starting):
 In @services/users.py, add a module-level constant NOTIFICATION_PREFS = ("email", "sms", "none"). Add "notification_pref": "none" to every record in USERS and to the record created by create_user. This is the only change to seed data you are allowed to make: keep all IDs, names and emails the same. Do not add new functions. Do not touch routes/api.py, services/tasks.py, utils/errors.py or anything in tests/. Run pytest -q when done.
 ```
 
-**Result:** pytest -q → [N passed]. [Any fix made in this session: none / describe]
+**Result:** pytest -q → 79 passed (no new tests expected). Fix: none. Only `services/users.py` changed (+5/−3): `NOTIFICATION_PREFS: tuple[str, ...] = ("email", "sms", "none")` added (Claude added the type hint on its own, following the CLAUDE.md type-hint rule), `"notification_pref": "none"` added to users 1 and 2 and to `create_user`'s record. No new functions; IDs, names and emails unchanged.
 
 ---
 
