@@ -13,6 +13,38 @@ def test_list_tasks_route_filters_by_priority():
     assert result
     assert all(task["priority"] == 3 for task in result)
 
+def test_list_tasks_route_sort_by_priority():
+    client = app.test_client()
+    urgent_id = None
+    for priority in [5, 1, 2]:
+        task = client.post("/api/tasks", json={"title": "Sort me", "user_id": 1, "priority": priority}).get_json()
+        if priority == 1:
+            urgent_id = task["id"]
+    response = client.get("/api/tasks?sort=priority")
+    assert response.status_code == 200
+    keys = [(task["priority"], task["id"]) for task in response.get_json()]
+    assert keys == sorted(keys)
+    ids = [task_id for _, task_id in keys]
+    assert ids.index(urgent_id) < ids.index(1)
+
+def test_list_tasks_route_sort_with_priority_filter():
+    client = app.test_client()
+    for _ in range(2):
+        client.post("/api/tasks", json={"title": "Filter sort", "user_id": 1, "priority": 2})
+    response = client.get("/api/tasks?priority=2&sort=priority")
+    assert response.status_code == 200
+    result = response.get_json()
+    assert len(result) >= 2
+    assert all(task["priority"] == 2 for task in result)
+    ids = [task["id"] for task in result]
+    assert all(a < b for a, b in zip(ids, ids[1:]))
+
+@pytest.mark.parametrize("sort", ["bogus", "id", ""])
+def test_list_tasks_route_invalid_sort_returns_422(sort):
+    response = app.test_client().get(f"/api/tasks?sort={sort}")
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid sort: must be priority"}
+
 def test_update_task_route_valid():
     client = app.test_client()
     task_id = client.post("/api/tasks", json={"title": "Patch me", "user_id": 1}).get_json()["id"]

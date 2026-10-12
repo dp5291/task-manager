@@ -32,7 +32,13 @@ def create_task_route():
 
 @api.route("/tasks", methods=["GET"])
 def list_tasks_route():
-    return jsonify(list_tasks(request.args.get("priority")))
+    sort = request.args.get("sort")
+    if sort is not None and sort != "priority":
+        raise ValidationError("sort", "must be priority")
+    tasks = list_tasks(request.args.get("priority"))
+    if sort == "priority":
+        tasks = sorted(tasks, key=lambda task: (task["priority"], task["id"]))
+    return jsonify(tasks)
 
 @api.route("/users/<int:user_id>", methods=["GET"])
 def get_user_route(user_id):

@@ -15,7 +15,7 @@ def test_get_task_valid():
     assert result["title"] == "Write report"
 
 def test_get_task_invalid():
-    with pytest.raises(Exception):
+    with pytest.raises(NotFoundError):
         get_task(999)
 
 def test_create_task_empty_title():
