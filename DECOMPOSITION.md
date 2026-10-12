@@ -65,7 +65,7 @@ In @services/users.py, add three functions following the get_user pattern (type 
 In @routes/api.py, add three routes using the functions already in @services/users.py: GET /users returns jsonify(list_users()); GET /users/<int:user_id>/notifications returns {"user_id": user_id, "notification_pref": get_notification_pref(user_id)}; PATCH /users/<int:user_id>/notifications reads the body with the existing _get_json_object() helper, takes notification_pref from it and returns jsonify(set_notification_pref(user_id, value)). Put no validation in the routes: pass the raw value to the service and let handle_app_error produce the 404/422 responses. Do not touch services/users.py, services/tasks.py, utils/errors.py or anything in tests/. Run pytest -q when done.
 ```
 
-**Result:** pytest -q → [N passed]. [Fix: none / describe]
+**Result:** pytest -q → 79 passed (no new tests expected). Fix: none. Only `routes/api.py` changed (+14/−1): imported `list_users`, `get_notification_pref`, `set_notification_pref`; added `GET /users`, `GET /users/<id>/notifications` (returns `{"user_id", "notification_pref"}`) and `PATCH /users/<id>/notifications`, which reads the body with `_get_json_object()` and passes `data.get("notification_pref")` straight to the service. No validation in the routes and no `NOTIFICATION_PREFS` import. The existing `GET /users/<id>` needed no change: it already returns `notification_pref` because SA-1 added the key to every `USERS` record.
 
 ---
 
