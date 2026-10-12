@@ -1,26 +1,13 @@
 # Retrospective — Plan Mode and Subagent Decomposition
 
-<!-- Write this LAST, after Tasks 1 and 2. Every paragraph must cite a session number, file name or prompt.
-     Replace every [bracket] with what really happened. Delete this comment. -->
-
 ## 1. Plan Mode value
-[Name the PLAN_LOG session where amending the plan prevented a revert. Say what the original plan would
-have done (e.g. "Session 2's plan used request.args.get('priority', type=int)"), what you changed, and what
-would have broken if you had just approved it (e.g. "?priority=abc would have returned all tasks with
-200 instead of 422, and I would only have found it after the route was written").]
+The clearest save was PLAN_LOG Session 5. Claude's plan replaced the existing title error in `create_task`, `ValidationError("title", "cannot be empty")`, with "must be a non-empty string", and nothing would have caught it: `test_create_task_empty_title` only checks the error class, so pytest would still pass. I amended the plan to keep the old check and message and add a separate `isinstance(title, str)` check before it, so the existing behaviour never changed and there was nothing to find and revert later. Session 3 is a second example: the plan put `from app import app` and three route tests back into `tests/test_tasks.py`, and amending it before execution saved moving them into `tests/test_api.py` afterwards. In both cases the problem was visible in the plan text, which is where Plan Mode pays off.
 
 ## 2. Plan Mode limits
-[Describe the PLAN_LOG session marked Partially/No. What did the amended plan say, and what did Claude
-actually do (file, function, line)? What does that tell you: e.g. Plan Mode makes the intent visible, but
-approval is not a guarantee, so the git diff still has to be checked against the plan.]
+Session 5 is the one row marked Partially. All three of my amendments landed, but the amended plan listed three PATCH bad-body cases and the output tested four: Claude put every bad body in one `BAD_BODIES` list and parametrized both the POST and PATCH tests over it, which quietly added malformed JSON (`"{"`) to PATCH. Two other sessions show the same boundary from different sides. Session 3 proved that amendments don't carry over to the next session: the Session 2 decision to keep HTTP tests in `tests/test_api.py` was lost because it never went into CLAUDE.md. Session 6 proved that an amendment can override CLAUDE.md: Claude flagged both conflicts, but once I said to follow my notes, it put `sorted()` and a `ValidationError` in `routes/api.py` and edited `test_get_task_invalid`. So Plan Mode is reliable for what Claude says it will do, not for what it adds while coding, and not for anything outside the current session. I still had to check `git diff` against the approved plan every time.
 
 ## 3. Subagent value
-[Which boundary mattered most (e.g. SA-3: no validation in routes/api.py, or SA-4: tests must not edit
-services/)? Why that one? What would a single session have done (e.g. put the email/sms/none check in the
-route and the service, or changed services/users.py to make a test pass)?]
+The most important boundary was SA-3's "No validation in `routes/api.py`: pass the raw value to `set_notification_pref`". SA-3 followed it: `set_notification_pref_route` passes `data.get("notification_pref")` straight to the service, with no `NOTIFICATION_PREFS` import, so the email/sms/none rule lives only in `services/users.py`. It mattered because Task 1 showed Claude's default habit is duplication: its plans copied the priority check (Session 2), the task existence check (Session 3) and the body check (Session 5) into a second place, and Session 6 showed it will put logic in a route when told to. In a single session, the same context would have written the route, the service and the tests together, and the tests would have been shaped around whatever the code did. Splitting it also showed the cost: SA-4 never tested SA-2's "missing or None reads as none" or SA-3's "bad body returns 422", because those hand-offs weren't copied into the SA-4 prompt.
 
 ## 4. Gap analysis
-[Name the one Task 2 constraint you would most want enforced mechanically, quoting it from DECOMPOSITION.md.
-Then ONE sentence on the hook, e.g.: "A PreToolUse hook on Edit and Write would block any change to a file
-under services/ or routes/ while the SA-4 test session is running, and tell Claude to report the bug instead."]
-<!-- Save this paragraph: it becomes your hook specification in Week 6 Drill 1. -->
+The constraint I most want enforced mechanically is SA-4's "Do not touch `services/`, `routes/`, `utils/`, `app.py`, `tests/test_tasks.py` or `tests/conftest.py`". More generally, it's the rule that each subagent may only write the files in its Output field. Claude followed every constraint in Task 2, but Session 6 showed one typed instruction can override a CLAUDE.md "Do not touch" rule, so the boundary only holds as long as nobody talks Claude out of it. A PreToolUse hook on Edit and Write would read the allowed paths for the current subagent from an environment variable (e.g. `SUBAGENT_OUTPUT=tests/test_users.py`) and block any edit to a file outside that list, telling Claude to report the problem instead.

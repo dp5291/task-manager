@@ -8,6 +8,7 @@ Flask API for tasks and users. Entry point `app.py` registers the `api` blueprin
 - Run tests: `pytest -v` — all tests in `tests/test_tasks.py` must pass before a task is done
 - Lint: `ruff check services/ utils/` — must print "All checks passed!"
 - Never run `ruff check . --fix`: it rewrites `tests/test_tasks.py` and `routes/api.py`, which have existing warnings that are out of scope
+- Quick check after each step: `pytest -q` — runs `tests/test_tasks.py`, `tests/test_api.py` and `tests/test_users.py`; `tests/conftest.py` resets `TASKS` between tests
 
 ## Architecture
 Requests flow one way: routes → services → repositories.
@@ -17,6 +18,7 @@ Requests flow one way: routes → services → repositories.
 - Cross-module checks go through the other module's service function: `create_task` calls `get_user(user_id)`; never import `USERS` into `services/tasks.py`.
 - Errors: services raise `AppError` subclasses; `handle_app_error` in `routes/api.py` turns them into `{"error": message}` JSON with the subclass's `status_code`. Routes never catch errors themselves.
 - Canonical example of the full flow: `get_user_route` → `get_user` in `services/users.py` → `USERS`.
+- Layer boundary (enforced in Week 5 SA-3): `routes/api.py` only reads the request (bodies through `_get_json_object()`) and passes raw values to one `services/` function; all value validation, e.g. the `NOTIFICATION_PREFS` check in `set_notification_pref`, lives in `services/`, following `get_user_route` → `get_user` in `services/users.py`.
 
 ## Conventions
 - `services/users.py` is the pattern to follow; `get_user` is the reference function.
@@ -34,3 +36,6 @@ Requests flow one way: routes → services → repositories.
 - Do not change the constructors in `utils/errors.py` — `handle_app_error` depends on `.message` and `.status_code`.
 - Do not change the seed data in `TASKS` or `USERS` — tests rely on IDs 1–3 (e.g. task 2 is "Write report").
 - Do not edit `DRILL_PROMPTS.md` or `requirements.txt`.
+- Do not add keys to the `USERS` or `TASKS` seed records unless the prompt explicitly allows it, and never change existing IDs, names, emails or titles (SA-1 had to override the seed-data rule to add `notification_pref`).
+- Do not edit `tests/` during a data- or service-layer step that only targets `services/users.py` or `services/tasks.py`; the new-test rule is met in the test step instead (SA-2: the new-test rule conflicted with "Do not touch tests/").
+- Do not edit `tests/conftest.py` from a feature's test step unless asked; put that feature's reset fixture in its own test file, e.g. `restore_users` in `tests/test_users.py` (SA-4).
