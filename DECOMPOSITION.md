@@ -46,7 +46,7 @@ In @services/users.py, add a module-level constant NOTIFICATION_PREFS = ("email"
 In @services/users.py, add three functions following the get_user pattern (type hints, Google-style docstrings, check-then-raise): list_users() -> list[dict] returning all users; get_notification_pref(user_id: int) -> str returning the user's notification_pref, treating a missing or None value as "none"; and set_notification_pref(user_id: int, pref: str) -> dict that updates the user and returns the updated record. Look users up with get_user so unknown IDs raise NotFoundError. If pref is not in NOTIFICATION_PREFS, raise ValidationError("notification_pref", "must be one of: email, sms, none"). Do not touch routes/api.py, services/tasks.py, utils/errors.py, anything in tests/, the USERS seed data or NOTIFICATION_PREFS. Run pytest -q when done.
 ```
 
-**Result:** pytest -q → [N passed]. [Fix: none / describe]
+**Result:** pytest -q → 79 passed (no new tests expected). Fix: none. Only `services/users.py` changed (+46, nothing modified): `list_users() -> list[dict]`, `get_notification_pref(user_id: int) -> str` (returns "none" when the value is missing or None) and `set_notification_pref(user_id: int, pref: str) -> dict`, all with Google-style docstrings. Both preference functions call `get_user()`, so unknown IDs raise `NotFoundError`; the user lookup runs before the value check, so an unknown user gives 404 even with a bad value. Note: the CLAUDE.md rule "any new `raise` … gets a NEW test" conflicted with this subagent's "Do not touch tests/" constraint; Claude followed the constraint, leaving the new `ValidationError` untested until SA-4.
 
 ---
 
