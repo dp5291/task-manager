@@ -84,17 +84,17 @@ In @routes/api.py, add three routes using the functions already in @services/use
 Create tests/test_users.py covering the notification preference feature. Service tests: seed users default to "none"; set_notification_pref accepts "email", "sms" and "none"; an invalid value raises ValidationError; an unknown user raises NotFoundError. Route tests using app.test_client() from app.py: GET /api/users and GET /api/users/1 include notification_pref; GET /api/users/1/notifications returns the preference; PATCH /api/users/1/notifications with {"notification_pref": "email"} returns 200; an invalid value returns 422; user 999 returns 404. Use a pytest fixture that deep-copies USERS before each test and restores it afterwards so tests do not depend on order. Do not touch services/, routes/, utils/, app.py, tests/test_tasks.py or tests/conftest.py. If a test fails because of a bug in the code, stop and tell me instead of changing the code. Run pytest -q when done.
 ```
 
-**Result:** pytest -q → [N passed]. [Fix: none / describe]
+**Result:** pytest -q → 93 passed (14 new). Fix: none. Only `tests/test_users.py` was created (+87). The `USERS` fixture is autouse in the test file itself (not conftest.py, which was off-limits) and restores in place with `copy.deepcopy` + `USERS.clear()` + `USERS.update(snapshot)`. Every case listed in the prompt is covered. Gaps: no test for `get_notification_pref` returning "none" when the value is missing/None (SA-2 hand-off), and none for a missing/non-JSON PATCH body returning 422 (SA-3 hand-off); the 422/404 tests only assert `"error" in` the JSON, not the exact message.
 
 ---
 
 ## Divergence
 
 ### Did Claude follow the constraint field for every subagent?
-[to fill in]
+Yes. `git diff --stat` after each subagent showed only the file in its Output field: SA-1 and SA-2 only `services/users.py`, SA-3 only `routes/api.py`, SA-4 only the new `tests/test_users.py`. The closest call was SA-2: my Week 4 CLAUDE.md says "any new `raise` … gets a NEW test in `tests/test_tasks.py`", but SA-2's constraint said "Do not touch tests/". Claude followed the constraint, so `set_notification_pref`'s `ValidationError` had no test until SA-4. In SA-4, the natural place for the `USERS` fixture was next to the `TASKS` one in `tests/conftest.py`, but because that file was in the constraint, Claude put a second autouse fixture in `tests/test_users.py` instead.
 
 ### Did any subagent's output break the next subagent's assumption? How did you recover?
-[to fill in]
+Nothing broke, and pytest -q stayed green after every subagent (79, 79, 79, 93), so no recovery was needed. Each hand-off matched exactly: SA-3 imported `list_users`, `get_notification_pref` and `set_notification_pref` with the signatures SA-2 produced, and the existing `GET /users/<id>` returned `notification_pref` with no route change because SA-1 had added the key to every `USERS` record. The real problem was the opposite of a break: hand-offs that never reached the test subagent. SA-2 promised a missing/None value reads as "none", and SA-3 promised a missing or non-JSON body returns 422 through `_get_json_object()`, but the SA-4 prompt didn't list either case, so neither is tested.
 
 ### Would you write the decomposition differently a second time?
-[to fill in]
+Yes, in three ways. First, I would paste every earlier hand-off line into the SA-4 prompt, or have each subagent write its own tests, so promised behaviour can't silently go untested. Second, I would require exact error bodies in the SA-4 prompt (e.g. `{"error": "Invalid notification_pref: must be one of: email, sms, none"}`), because the `==` rule I amended into Task 1 Sessions 4 and 5 was not in CLAUDE.md and came back as `"error" in`. Third, I would merge SA-1 into SA-2, since both edit only `services/users.py`, and allow SA-4 to edit `tests/conftest.py` so the `USERS` and `TASKS` reset fixtures live in one place.
