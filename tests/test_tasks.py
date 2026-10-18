@@ -105,3 +105,7 @@ def test_create_task_non_string_title(title):
 def test_create_task_invalid_user_id(user_id):
     with pytest.raises(ValidationError):
         create_task("Bad user", user_id)
+
+def test_process_order_unknown_task_raises_not_found():
+    with pytest.raises(NotFoundError):
+        process_order(999)
