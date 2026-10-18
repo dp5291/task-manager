@@ -66,21 +66,27 @@ I chose it because I issued this prompt repeatedly: Week 4 Session 1 added NotFo
 
 
 
+\## Phase 4: re-run with final command (narrowed Goal)
+
+\- Change: Goal now fixes only (a) explicit raises of non-utils/errors.py exceptions and (b) direct TASKS\[...]/USERS\[...] indexing that raises KeyError; new Constraint: no new isinstance validation, list it under "Suggestions (not changed)".
+
+\- Result: git diff --stat empty; all 5 functions "already compliant"; pytest -q 93 passed; create\_user's AttributeError/TypeError cases, get\_user(\[1]) and the empty-USERS max() case were listed as suggestions, not edited.
+
 \## Debrief
 
 Q1. What did I change between v1 and v2, and which prompt part?
 
-\[to fill in]
+the main changes were in Constraints (allowing new tests in the matching test file, the “already compliant → skip” rule) and Context (call get\_task if it exists). The evidence is that v1 gave 93 passed with no test, and v2 gave 94 passed with test\_process\_order\_unknown\_task\_raises\_not\_found.
 
 
 
 Q2. CLAUDE.md vs slash command: practical difference?
 
-\[to fill in]
+CLAUDE.md loads into every session automatically and holds standing rules. A command only runs when you call it, holds a whole task recipe, and takes input through $ARGUMENTS. Your runs showed both working together: the command never mentioned ruff, but Claude ran it because CLAUDE.md says to.
 
 
 
 Q3. Did the services/users.py run behave correctly? What does it reveal about my Constraints?
 
-\[to fill in]
+the first run changed users.py, which revealed the Goal was too broad (“can raise… TypeError”), not just the Constraints. After narrowing it, the run made zero changes and only reported suggestions.
 
