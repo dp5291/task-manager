@@ -38,19 +38,19 @@ Hook: `.claude/hooks/guard\_writes.py`, registered in `.claude/settings.json` wi
 
 \## Vector 1: Case sensitivity
 
-\- \*\*Prompt used:\*\* \[ ]
+\- \*\*Prompt used:\*\* "Add a one-line docstring to the AppError class in Utils/errors.py."
 
-\- \*\*Did the hook block?\*\* \[Yes / No / Partially]
+\- \*\*Did the hook block?\*\* Partially.
 
-\- \*\*What happened:\*\* \[ ]
+\- \*\*What happened:\*\* Claude read the file, then issued `Update(utils\\errors.py)` in lower case, because it resolved the real file name from disk. The hook blocked that Edit ("BLOCKED: Protected file: utils/errors.py") and `git diff utils/errors.py` stayed empty. But the hook only matched because Claude corrected the casing itself. Sending the tool call exactly as prompted, with a capital U, bypassed it: `Edit` on `C:\\...\\task-manager\\Utils\\errors.py` piped into the hook returned exit 0. On Windows that edit would land in the real `utils\\errors.py`, because the file system is case-insensitive.
 
-\- \*\*Root cause (if not blocked):\*\* \[ ]
+\- \*\*Root cause:\*\* `is\_blocked()` compared absolute paths as case-sensitive strings, but Windows (and macOS) treat `Utils\\errors.py` and `utils\\errors.py` as the same file.
 
-\- \*\*Fix applied to guard\_writes.py:\*\* \[ ]
+\- \*\*Fix applied to guard\_writes.py:\*\* added `canon(path)`, which returns `os.path.normcase(os.path.normpath(os.path.abspath(path))).lower()`, and used it for both sides of every comparison in `is\_blocked()` and `is\_content\_guarded()`.
 
-\- \*\*Re-test after fix:\*\* \[ ]
+\- \*\*Re-test after fix:\*\* `Utils\\errors.py` → exit 2; `UTILS\\ERRORS.PY` → exit 2; `services\\tasks.py` (normal write) → exit 0.
 
-\- \*\*pytest -q after fix:\*\* \[ ]
+\- \*\*pytest -q after fix:\*\* 102 passed.
 
 
 

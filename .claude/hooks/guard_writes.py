@@ -36,12 +36,18 @@ CONNECTION_STRING = re.compile(r"postgres(?:ql)?://|sqlite:///", re.IGNORECASE)
 
 PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
 
+def canon(path: str) -> str:
+    """Absolute, normalized, lower-case path. Windows (and macOS) file systems
+    are case-insensitive, so Utils/errors.py IS utils/errors.py on disk."""
+    return os.path.normcase(os.path.normpath(os.path.abspath(path))).lower()
+
 def is_blocked(file_path: str) -> tuple[bool, str]:
     """Return (blocked, reason) for the given file path."""
-    # Claude Code sends absolute paths, so compare absolute to absolute.
-    norm = os.path.normpath(os.path.abspath(file_path))
+    # Claude Code sends absolute paths, so compare absolute to absolute,
+    # case-insensitively.
+    norm = canon(file_path)
     for pattern in BLOCKED_PATHS:
-        target = os.path.normpath(os.path.join(PROJECT_DIR, pattern))
+        target = canon(os.path.join(PROJECT_DIR, pattern))
         if norm == target:
             return True, f"Protected file: {pattern}"
         if pattern.endswith("/") and norm.startswith(target + os.sep):
@@ -49,9 +55,8 @@ def is_blocked(file_path: str) -> tuple[bool, str]:
     return False, ""
 
 def is_content_guarded(file_path: str) -> bool:
-    norm = os.path.normpath(os.path.abspath(file_path))
-    return any(norm == os.path.normpath(os.path.join(PROJECT_DIR, p))
-               for p in CONTENT_GUARDED_PATHS)
+    norm = canon(file_path)
+    return any(norm == canon(os.path.join(PROJECT_DIR, p)) for p in CONTENT_GUARDED_PATHS)
 
 def written_text(tool: str, tool_input: dict) -> str:
     """The new text a Write/Edit/MultiEdit call would put into the file."""
