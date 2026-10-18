@@ -18,9 +18,9 @@ Audit $ARGUMENTS for missing AppError handling. Only fix two things: (a) an expl
 
 \## Constraints
 
-\- Only edit $ARGUMENTS, plus NEW tests in its matching test file (tests/test\_tasks.py for services/tasks.py, tests/test\_users.py for services/users.py). Do not modify utils/errors.py, routes/api.py, tests/conftest.py or any other file.
+\- Scope lock: only edit $ARGUMENTS, plus NEW tests in its matching test file (tests/test\_tasks.py for services/tasks.py, tests/test\_users.py for services/users.py). Do not modify utils/errors.py, routes/api.py, tests/conftest.py or any other file.
 
-\- If a function already raises only NotFoundError/ValidationError and its docstring lists them under Raises:, skip it. Do not rewrite or reformat it; report it as "already compliant".
+\- Idempotency: if a function already uses AppError correctly (it raises only NotFoundError/ValidationError and its docstring lists them under Raises:), skip it. Do not rewrite, reformat or re-document it; report it as "already compliant".
 
 \- Every new raise gets one NEW test using the specific class, e.g. pytest.raises(NotFoundError). Do not edit existing tests.
 
@@ -28,11 +28,15 @@ Audit $ARGUMENTS for missing AppError handling. Only fix two things: (a) an expl
 
 \- Preserve all existing function signatures.
 
-\- Do not add new input-type validation (isinstance checks) to functions that have neither (a) nor (b). If you notice inputs that could crash with a wrong type, list them under "Suggestions (not changed)" in your report instead of editing.
+\- Do not add new input-type validation (isinstance checks) to functions that have neither (a) nor (b). List such inputs under "Suggestions (not changed)" instead of editing.
 
 
 
 \## Verification
 
-Run pytest -q after every function you update, not only when done. All existing tests must still pass before you move to the next function. When finished, report a table: function | changed / already compliant, and the final pytest output.
+\- Run pytest -q after every function you change, before moving to the next function. Do not save the test run for the end.
+
+\- All existing tests must pass at each step; if one fails, fix that function before continuing.
+
+\- Finally run ruff check services/ utils/ and report: a table (function | changed / already compliant), the last pytest output, and the "Suggestions (not changed)" list.
 
