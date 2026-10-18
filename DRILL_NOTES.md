@@ -72,6 +72,8 @@ I chose it because I issued this prompt repeatedly: Week 4 Session 1 added NotFo
 
 \- Result: git diff --stat empty; all 5 functions "already compliant"; pytest -q 93 passed; create\_user's AttributeError/TypeError cases, get\_user(\[1]) and the empty-USERS max() case were listed as suggestions, not edited.
 
+
+
 \## Debrief
 
 Q1. What did I change between v1 and v2, and which prompt part?
@@ -137,4 +139,28 @@ the first run changed users.py, which revealed the Goal was too broad (“can ra
 \- So the hook never fired: Claude self-restrained after reading the hook's source. The rules being readable acted as a warning, and the Bash gap was known to Claude but not enforced.
 
 \- Manual test: Write to migrations\\versions\\add\_rate\_limit\_table.py (absolute path) -> "BLOCKED: Protected directory: migrations/", exit 2. Test-Path migrations -> False.
+
+
+
+\## Phase 4: legitimate write still allowed
+
+\- Prompt: "Add a get\_tasks\_by\_done(done: bool) function to services/tasks.py. Follow the pattern in services/users.py. Run pytest -q when done."
+
+\- Result: NOT blocked. services/tasks.py +16 lines (get\_tasks\_by\_done with type hints, Google docstring, ValidationError for non-bool); pytest -q 93 passed; ruff clean. The hook allowed it silently (exit 0).
+
+\- Side finding: Claude added no test, citing my Week 5 CLAUDE.md rule "Do not edit tests/ during a data- or service-layer step that only targets services/tasks.py". That rule was meant for subagent pipelines but now suppresses tests on ordinary single-file requests. It needs rewording in the Week 6 CLAUDE.md audit.
+
+\- Reverted afterwards (drill only).
+
+## Debrief
+
+Q1 (did Claude work around the block?): No, in both runs. After the block it offered options instead. In the migrations run, it read guard\_writes.py and refused without even trying, while openly naming Bash as a bypass. Lesson: hooks and prompts work in layers. The hook enforces what it covers, but anything outside its matcher (Bash) is protected only by Claude’s judgment.
+
+
+
+Q2 (which is harder to keep accurate?): Think about your RateLimitError result. The CLAUDE.md rule (“don’t change the constructors”) was followed literally and still let the edit through, while the path list is exact. But BLOCKED\_PATHS fails silently if a file is renamed or moved, or if the path format doesn’t match (your absolute-path bug). 
+
+
+
+Q3 (a protection file-level blocking can’t give): a content check, for example “allow writes to services/tasks.py, but block one that contains a hardcoded sqlite:/// connection string.” Sketch: read content/new\_string from tool\_input and run a regex on it.
 
