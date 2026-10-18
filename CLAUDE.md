@@ -9,6 +9,9 @@ Flask API for tasks and users. Entry point `app.py` registers the `api` blueprin
 - Lint: `ruff check services/ utils/` — must print "All checks passed!"
 - Never run `ruff check . --fix`: it rewrites `tests/test_tasks.py` and `routes/api.py`, which have existing warnings that are out of scope
 - Quick check after each step: `pytest -q` — runs `tests/test_tasks.py`, `tests/test_api.py` and `tests/test_users.py`; `tests/conftest.py` resets `TASKS` between tests
+- `/audit-errors <services file>`: convert raw exceptions (raw raises, direct `TASKS[...]`/`USERS[...]` indexing) to AppError subclasses one function at a time; skips already-compliant functions and only *suggests* new validation. Use after adding service code.
+- `/scaffold-endpoint <resource> <METHOD>`: create a new endpoint across `routes/api.py`, `services/<resource>.py`, `schemas/<resource>.py` and `tests/test_<resource>.py`, e.g. `/scaffold-endpoint tags POST`.
+- `/verify-scope <allowed files...>`: read-only check that the uncommitted diff touches only the listed files and follows project rules. Run it right after any Claude change, before committing.
 
 ## Architecture
 Requests flow one way: routes → services → repositories.
@@ -33,9 +36,10 @@ Requests flow one way: routes → services → repositories.
 ## Do not touch
 - Do not change the signatures of `get_task`, `create_task`, or `process_order` — `routes/api.py` imports them by name and `tests/test_tasks.py` calls them.
 - Do not edit or delete the existing tests in `tests/test_tasks.py`, including the `pytest.raises(Exception)` checks; fix the service code instead.
-- Do not change the constructors in `utils/errors.py` — `handle_app_error` depends on `.message` and `.status_code`.
 - Do not change the seed data in `TASKS` or `USERS` — tests rely on IDs 1–3 (e.g. task 2 is "Write report").
-- Do not edit `DRILL_PROMPTS.md` or `requirements.txt`.
 - Do not add keys to the `USERS` or `TASKS` seed records unless the prompt explicitly allows it, and never change existing IDs, names, emails or titles (SA-1 had to override the seed-data rule to add `notification_pref`).
 - Do not edit `tests/` during a data- or service-layer step that only targets `services/users.py` or `services/tasks.py`; the new-test rule is met in the test step instead (SA-2: the new-test rule conflicted with "Do not touch tests/").
 - Do not edit `tests/conftest.py` from a feature's test step unless asked; put that feature's reset fixture in its own test file, e.g. `restore_users` in `tests/test_users.py` (SA-4).
+
+## Hooks
+`.claude/hooks/guard_writes.py` is a PreToolUse hook, registered in `.claude/settings.json` with matcher `Write|Edit|MultiEdit|Bash`, that blocks a tool call before it runs by exiting with code 2 (its stderr message is shown to Claude). It blocks any write to the paths in `BLOCKED_PATHS` (`utils/errors.py`, `requirements.txt`, `DRILL_PROMPTS.md`, `migrations/`, `.env`, `.claude/settings.json` and the hook itself), matched case-insensitively on absolute paths, including Bash commands that write to them (`>`, `tee`, `sed -i`, `cp`, `Set-Content`, ...). It also blocks Bash commands matching `BLOCKED_COMMANDS` (`DROP`/`TRUNCATE TABLE`, `rm -rf`, `git push --force`) and writes to `services/tasks.py` that contain a `postgresql://` or `sqlite:///` connection string. To add a rule, edit the hook by hand (Claude is blocked from editing it): add a repo-relative path to `BLOCKED_PATHS`, a `(re.compile(r"..."), "reason")` pair to `BLOCKED_COMMANDS`, or a path to `CONTENT_GUARDED_PATHS`. Then pipe a sample call into it, e.g. `'{"tool_name":"Write","tool_input":{"file_path":"<path>","content":"x"}}' | python .claude/hooks/guard_writes.py; $LASTEXITCODE`, confirm exit 2 for the blocked case and 0 for a normal write, and run `pytest -q` before committing.
