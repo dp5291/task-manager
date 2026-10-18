@@ -13,13 +13,17 @@ BLOCKED_PATHS = [
     ".claude/settings.json",    # Hook config: agents must not self-modify
 ]
 
+PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+
 def is_blocked(file_path: str) -> tuple[bool, str]:
     """Return (blocked, reason) for the given file path."""
-    norm = os.path.normpath(file_path)
+    # Claude Code sends absolute paths, so compare absolute to absolute.
+    norm = os.path.normpath(os.path.abspath(file_path))
     for pattern in BLOCKED_PATHS:
-        if norm == os.path.normpath(pattern):
+        target = os.path.normpath(os.path.join(PROJECT_DIR, pattern))
+        if norm == target:
             return True, f"Protected file: {pattern}"
-        if pattern.endswith("/") and norm.startswith(os.path.normpath(pattern)):
+        if pattern.endswith("/") and norm.startswith(target + os.sep):
             return True, f"Protected directory: {pattern}"
     return False, ""
 

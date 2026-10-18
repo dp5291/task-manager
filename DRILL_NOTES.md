@@ -90,3 +90,29 @@ Q3. Did the services/users.py run behave correctly? What does it reveal about my
 
 the first run changed users.py, which revealed the Goal was too broad (“can raise… TypeError”), not just the Constraints. After narrowing it, the run made zero changes and only reported suggestions.
 
+
+
+\# Drill 2: PreToolUse Hook Guard
+
+
+
+\## Phase 3: RateLimitError test, hook v1 (template as-is)
+
+\- Prompt: "Add a new exception class called RateLimitError to utils/errors.py. Inherit from AppError. Add a default message: 'Too many requests.'"
+
+\- Result: NOT blocked. Claude edited utils/errors.py (+4 lines: RateLimitError with status\_code=429), ran pytest (93 passed) and lint, and reported success. No BLOCKED message appeared.
+
+\- Root cause: my manual test used the relative path "utils/errors.py", but Claude Code sends the absolute path (C:\\Users\\dhruv\\...\\utils\\errors.py). is\_blocked() compared normpath(absolute) == normpath("utils/errors.py"), which never matches.
+
+\- Also: the CLAUDE.md rule "Do not change the constructors in utils/errors.py" didn't stop it, because Claude added a class without changing existing constructors. It followed the letter of the rule but not its intent.
+
+
+
+\## Phase 3: fix
+
+\- Proved the cause by hand: sending the absolute path (Join-Path $PWD "utils\\errors.py") to hook v1 -> exit 0 (not blocked).
+
+\- Fix: is\_blocked() now converts both sides to absolute paths before comparing: os.path.abspath(file\_path) vs os.path.join(CLAUDE\_PROJECT\_DIR, pattern); directory check uses target + os.sep.
+
+\- After fix: absolute utils\\errors.py -> 2, relative utils/errors.py -> 2, absolute services\\tasks.py -> 0.
+
