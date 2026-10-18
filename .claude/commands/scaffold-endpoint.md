@@ -52,7 +52,8 @@ If $ARGUMENTS does not contain both a resource and a method, stop and ask instea
 
 \- Write a happy-path test with app.test\_client() that calls the new endpoint and asserts the correct status code (201 for POST, 200 for GET/PATCH) and the returned JSON fields.
 
-\- Write one invalid-input test that asserts 422 and the exact error JSON with ==.
+\- Write one route test per distinct ValidationError/NotFoundError the new service function raises, each asserting 422 (or 404) and the exact error JSON with ==.
+\- Write one service-level test per raise in tests/test_<resource>.py that calls the service function directly with pytest.raises(ValidationError) (or NotFoundError).
 
 \- Run pytest -q and confirm everything passes, old and new.
 
