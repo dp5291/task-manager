@@ -1,6 +1,6 @@
 \## Goal
 
-Audit $ARGUMENTS for missing AppError handling. For every function that can raise a raw exception (KeyError, ValueError, TypeError, Exception), replace it with the appropriate AppError subclass from utils/errors.py.
+Audit $ARGUMENTS for missing AppError handling. Only fix two things: (a) an explicit raise of an exception that is not from utils/errors.py, and (b) direct indexing such as TASKS\[task\_id] or USERS\[user\_id] that raises a raw KeyError for an unknown ID. Replace them with the appropriate AppError subclass from utils/errors.py.
 
 
 
@@ -27,6 +27,8 @@ Audit $ARGUMENTS for missing AppError handling. For every function that can rais
 \- Do not add new AppError subclasses; use only existing ones.
 
 \- Preserve all existing function signatures.
+
+\- Do not add new input-type validation (isinstance checks) to functions that have neither (a) nor (b). If you notice inputs that could crash with a wrong type, list them under "Suggestions (not changed)" in your report instead of editing.
 
 
 

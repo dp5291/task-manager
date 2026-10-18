@@ -52,9 +52,17 @@ I chose it because I issued this prompt repeatedly: Week 4 Session 1 added NotFo
 
 
 
-\## Phase 4: Canonical file (/audit-errors services/users.py)
+\## Phase 4: Canonical file (/audit-errors services/users.py), first run with v2
 
-\[to fill in: did Claude change anything? git diff --stat output; Claude's table]
+\- NOT "no changes": Claude changed create\_user (services/users.py +3/-4 lines... 7 lines changed) and added 2 tests in tests/test\_users.py; pytest 93 -> 95.
+
+\- Reason: create\_user(123, ...) raised AttributeError at .strip() and create\_user("Carol", 5) raised TypeError at "@" in email; it added isinstance(..., str) checks raising the existing ValidationErrors.
+
+\- Idempotency worked: get\_user, list\_users, get\_notification\_pref, set\_notification\_pref all "already compliant" and untouched.
+
+\- It left max(USERS.keys()) alone (raw ValueError only if USERS were empty) because no allowed AppError class fit.
+
+\- Root cause: my Goal said "every function that CAN raise a raw exception (... TypeError ...)". Any function can raise TypeError on wrong input types, so Claude treated adding input validation as part of the audit. The Goal was too broad, not the Constraints.
 
 
 
