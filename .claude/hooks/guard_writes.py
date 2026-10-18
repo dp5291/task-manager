@@ -68,6 +68,26 @@ def written_text(tool: str, tool_input: dict) -> str:
         return "\n".join(e.get("new_string", "") for e in tool_input.get("edits", []))
     return ""
 
+# Vector 2 fix: Bash commands that touch a protected path.
+# A segment that mentions a protected path is allowed only if it is a
+# read-only command with no output redirection; anything else is a write.
+READ_ONLY_COMMAND = re.compile(
+    r"^\s*(?:cat|type|head|tail|less|more|grep|rg|wc|ls|dir|"
+    r"git\s+(?:diff|log|show|status|blame)|get-content|select-string)\b",
+    re.IGNORECASE,
+)
+
+def bash_protected_write(command: str) -> str:
+    """Return the protected path a Bash command would write to, or ''."""
+    cmd = command.replace("\\", "/").lower()
+    for segment in re.split(r"&&|\|\||;|\||\n", cmd):
+        for pattern in BLOCKED_PATHS:
+            p = re.escape(pattern.lower().rstrip("/"))
+            if re.search(r"(?<![\w.-])" + p + r"(?![\w-])", segment):
+                if not READ_ONLY_COMMAND.match(segment) or ">" in segment:
+                    return pattern
+    return ""
+
 def block(message: str) -> None:
     print(message, file=sys.stderr)
     sys.exit(2)
@@ -85,6 +105,11 @@ def main():
         for pattern, reason in BLOCKED_COMMANDS:
             if pattern.search(command):
                 block(f"BLOCKED: {reason}. Command: {command}")
+        protected = bash_protected_write(command)
+        if protected:
+            block(f"BLOCKED: this Bash command would write to the protected path {protected}. "
+                  "Protected files cannot be changed through the shell either; "
+                  f"ask the user to edit it by hand. Command: {command}")
         sys.exit(0)
 
     # Only inspect file-write tools below
