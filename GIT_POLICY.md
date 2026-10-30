@@ -16,7 +16,7 @@ Every rule names the mechanism that backs it. **Enforced** means git or Claude C
 | Commit subject: `type(scope): subject`, types `feat fix test refactor docs chore`, ≤ 72 chars, no trailing period. | **Git hook** `.githooks/commit-msg` (enforced, for people and Claude). |
 | Scopes: `tasks, users, tags, api, tests, hooks, claude, db`; imperative mood; one logical change per commit. | **CLAUDE.md** + **slash command** `/ship` (advisory); human review. |
 | Claude commits only through `/ship`: debug-code check, `pytest -q`, `ruff check`, then one proposed message. | **Slash command** `/ship` (advisory steps). |
-| No commit happens without a person approving it. | **Permission setting**: `git commit` isn't in `/ship`'s `allowed-tools`, so Claude Code prompts every time (enforced). |
+| No commit happens without a person approving it. | **Permission setting**: `permissions.ask` rules for `git commit` (Bash and PowerShell) in `.claude/settings.json` make Claude Code prompt every time (enforced). Leaving `git commit` out of `/ship`'s `allowed-tools` alone did not prompt (SAFETY_KIT Test 2). |
 | Never skip hooks (`--no-verify`, `git commit -n`). | **Claude Code hook** `guard_git.py` (enforced for Claude); for people, it's a team rule checked in review. |
 
 ## 3. Attribution
