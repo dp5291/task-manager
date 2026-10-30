@@ -1,3 +1,5 @@
+from datetime import date
+
 import pytest
 from services.tasks import create_task, get_task, get_tasks_for_user, list_tasks, process_order, update_task
 from utils.errors import NotFoundError, ValidationError
@@ -109,3 +111,74 @@ def test_create_task_invalid_user_id(user_id):
 def test_process_order_unknown_task_raises_not_found():
     with pytest.raises(NotFoundError):
         process_order(999)
+
+TODAY = date(2026, 6, 15)
+INVALID_DUE_DATES = ["2026-13-01", "2026-02-30", "20261201", "12/01/2026", "2026-1-5", "", 20261201, True, date(2026, 12, 1)]
+
+def test_create_task_with_due_date():
+    created = create_task("Due soon", 1, due_date="2026-12-01")
+    assert created["due_date"] == "2026-12-01"
+    assert get_task(created["id"])["due_date"] == "2026-12-01"
+
+def test_create_task_default_due_date_none():
+    created = create_task("No deadline", 1)
+    assert created["due_date"] is None
+
+@pytest.mark.parametrize("due_date", INVALID_DUE_DATES)
+def test_create_task_invalid_due_date(due_date):
+    with pytest.raises(ValidationError):
+        create_task("Bad date", 1, due_date=due_date)
+
+def test_update_task_due_date():
+    created = create_task("Set deadline", 1, priority=2)
+    result = update_task(created["id"], due_date="2026-12-01")
+    assert result["due_date"] == "2026-12-01"
+    assert result["priority"] == 2
+
+def test_update_task_clear_due_date():
+    created = create_task("Clear deadline", 1, due_date="2026-12-01")
+    result = update_task(created["id"], due_date=None)
+    assert result["due_date"] is None
+
+@pytest.mark.parametrize("due_date", INVALID_DUE_DATES)
+def test_update_task_invalid_due_date(due_date):
+    created = create_task("Bad date update", 1)
+    with pytest.raises(ValidationError):
+        update_task(created["id"], due_date=due_date)
+
+def test_update_task_no_fields():
+    created = create_task("Nothing to change", 1)
+    with pytest.raises(ValidationError):
+        update_task(created["id"])
+
+def test_update_task_due_date_unknown_task():
+    with pytest.raises(NotFoundError):
+        update_task(999, due_date="2026-12-01")
+
+def test_list_tasks_overdue():
+    open_past_id = create_task("Late", 1, due_date="2026-06-14")["id"]
+    done_past_id = create_task("Late but done", 1, due_date="2026-06-14")["id"]
+    process_order(done_past_id)
+    create_task("Not yet due", 1, due_date="2026-06-16")
+    create_task("No deadline", 1)
+    result = list_tasks(overdue="true", today=TODAY)
+    assert [task["id"] for task in result] == [open_past_id]
+
+def test_list_tasks_overdue_due_today_is_not_overdue():
+    due_today_id = create_task("Due today", 1, due_date="2026-06-15")["id"]
+    result = list_tasks(overdue="true", today=TODAY)
+    assert due_today_id not in [task["id"] for task in result]
+
+def test_list_tasks_overdue_with_priority():
+    urgent_id = create_task("Late urgent", 1, priority=1, due_date="2026-06-14")["id"]
+    create_task("Late low", 1, priority=5, due_date="2026-06-14")
+    result = list_tasks(1, overdue="true", today=TODAY)
+    assert [task["id"] for task in result] == [urgent_id]
+
+def test_list_tasks_overdue_false_returns_all():
+    create_task("Late", 1, due_date="2026-06-14")
+    assert list_tasks(overdue="false", today=TODAY) == list_tasks()
+
+def test_list_tasks_invalid_overdue():
+    with pytest.raises(ValidationError):
+        list_tasks(overdue="yes")

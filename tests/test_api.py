@@ -1,5 +1,6 @@
 import pytest
 from app import app
+from services.tasks import process_order
 
 def test_list_tasks_route_invalid_priority_returns_422():
     response = app.test_client().get("/api/tasks?priority=abc")
@@ -139,3 +140,65 @@ def test_create_task_route_invalid_user_id(body):
     response = app.test_client().post("/api/tasks", json=body)
     assert response.status_code == 422
     assert response.get_json() == {"error": "Invalid user_id: must be an integer"}
+
+DUE_DATE_ERROR = {"error": "Invalid due_date: must be a date in YYYY-MM-DD format"}
+INVALID_DUE_DATES = ["2026-13-01", "2026-02-30", "20261201", "12/01/2026", "", 20261201, True]
+
+def test_create_task_route_with_due_date():
+    client = app.test_client()
+    response = client.post("/api/tasks", json={"title": "Due", "user_id": 1, "due_date": "2026-12-01"})
+    assert response.status_code == 201
+    assert response.get_json()["due_date"] == "2026-12-01"
+    task_id = response.get_json()["id"]
+    assert client.get(f"/api/tasks/{task_id}").get_json()["due_date"] == "2026-12-01"
+
+@pytest.mark.parametrize("due_date", INVALID_DUE_DATES)
+def test_create_task_route_invalid_due_date(due_date):
+    response = app.test_client().post("/api/tasks", json={"title": "Bad", "user_id": 1, "due_date": due_date})
+    assert response.status_code == 422
+    assert response.get_json() == DUE_DATE_ERROR
+
+def test_update_task_route_due_date_only():
+    client = app.test_client()
+    task_id = client.post("/api/tasks", json={"title": "Set due", "user_id": 1, "priority": 2}).get_json()["id"]
+    response = client.patch(f"/api/tasks/{task_id}", json={"due_date": "2026-12-01"})
+    assert response.status_code == 200
+    assert response.get_json()["due_date"] == "2026-12-01"
+    assert response.get_json()["priority"] == 2
+
+def test_update_task_route_clear_due_date():
+    client = app.test_client()
+    task_id = client.post("/api/tasks", json={"title": "Clear due", "user_id": 1, "due_date": "2026-12-01"}).get_json()["id"]
+    response = client.patch(f"/api/tasks/{task_id}", json={"due_date": None})
+    assert response.status_code == 200
+    assert response.get_json()["due_date"] is None
+
+@pytest.mark.parametrize("due_date", INVALID_DUE_DATES)
+def test_update_task_route_invalid_due_date(due_date):
+    client = app.test_client()
+    task_id = client.post("/api/tasks", json={"title": "Bad due", "user_id": 1}).get_json()["id"]
+    response = client.patch(f"/api/tasks/{task_id}", json={"due_date": due_date})
+    assert response.status_code == 422
+    assert response.get_json() == DUE_DATE_ERROR
+
+def test_update_task_route_empty_object():
+    client = app.test_client()
+    task_id = client.post("/api/tasks", json={"title": "Empty patch", "user_id": 1}).get_json()["id"]
+    response = client.patch(f"/api/tasks/{task_id}", json={})
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid body: must include priority or due_date"}
+
+def test_list_tasks_route_overdue():
+    client = app.test_client()
+    late_id = client.post("/api/tasks", json={"title": "Late", "user_id": 1, "due_date": "2000-01-01"}).get_json()["id"]
+    done_id = client.post("/api/tasks", json={"title": "Late done", "user_id": 1, "due_date": "2000-01-01"}).get_json()["id"]
+    process_order(done_id)
+    client.post("/api/tasks", json={"title": "Future", "user_id": 1, "due_date": "2999-12-31"})
+    response = client.get("/api/tasks?overdue=true")
+    assert response.status_code == 200
+    assert [task["id"] for task in response.get_json()] == [late_id]
+
+def test_list_tasks_route_invalid_overdue():
+    response = app.test_client().get("/api/tasks?overdue=bogus")
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid overdue: must be true or false"}
