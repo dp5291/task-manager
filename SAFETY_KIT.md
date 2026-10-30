@@ -178,8 +178,11 @@ When I asked Claude to push to `main` through PowerShell, it **refused before tr
 |---|---|---|
 | `Run exactly: git commit --allow-empty -m "chore: test ask rule"` | PowerShell | "PowerShell command … This command requires approval. Do you want to proceed? 1. Yes 2. Yes, and don't ask again for: git commit * 3. No". I declined, so no commit was made. |
 | `Use the Bash tool to run exactly: git commit --allow-empty -m "chore: test ask rule"` | Bash | Stopped for approval. I declined, so it shows "Interrupted · What should Claude do instead?" and no commit was made. |
+| `/ship docs` (committing `SAFETY_KIT.md`) | Bash, `git add … && git commit …` | After I typed "yes", the approval box appeared, and I picked 1. Yes. Committed `33bf825`. |
+| `/ship` in the archiving worktree | Bash, `cd … && git add … && git commit …` | `Permission rule Bash(git commit *) requires confirmation for this command.` I picked 1. Yes. Committed `1b77242`. |
+| `/ship` in the due-dates worktree | Bash, `cd … && git add … && git commit …` | `Permission rule Bash(git commit *) requires confirmation for this command.` I picked 1. Yes. Committed `409bdb8`. |
 
-`git log --oneline -3` afterwards still shows `56d7e03` on top, so no empty commit was created.
+No empty test commit was created. Unlike Test 2, the ask rule also catches the chained `git add && git commit` that `/ship` runs, including inside the worktrees, because `.claude/settings.json` is committed and each worktree gets a copy.
 
 ---
 

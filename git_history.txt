@@ -1,0 +1,35 @@
+﻿*   0a880a7 Merge branch 'worktree-archiving'
+|\  
+| * 1b77242 feat(tasks): add task archiving with include_archived filter
+* |   976fccd Merge branch 'worktree-due-dates'
+|\ \  
+| |/  
+|/|   
+| * 409bdb8 feat(tasks): add optional due_date and overdue filter
+|/  
+* 33bf825 docs(claude): add safety kit with hook test results and rule audit
+* ccb6379 docs(claude): note permissions.ask rule enforces commit approval
+* 56d7e03 fix(hooks): cover PowerShell tool and ask before git commit
+* fefcbc8 docs(claude): add team git policy with enforcement mechanisms
+* eaa38ba feat(hooks): add guard_git PreToolUse hook
+* 8d03000 feat(hooks): add conventional commit-msg git hook
+* 4fac02a feat(claude): add /ship review-and-commit command
+* 5871de7 docs(claude): add git conventions section
+* 8d8df46 chore: ignore Claude Code worktrees
+* f80b847 Reset tasks.db
+* e2ea377 Week 7: create_db.py + tasks.db for MCP servers
+* 5aba168 Week 6 Task 3: RETRO + CLAUDE.md audit
+* 064503d Keep Week 5 retro as RETRO_week5.md
+* 9a2fd00 Task 2B: Vector 2 fix (Bash writes to protected paths)
+* 8fe137a Task 2B: Vector 1 fix (case-insensitive path matching)
+* efc2314 Task 2A: Bash guard + content guard, matcher includes Bash
+* 19e44aa Task 1: /scaffold-endpoint tags POST (v2) + verify-scope re-run
+* d631a65 Task 1: scaffold-endpoint v2 (test every raise + service tests)
+* ef44e41 Task 1: add verify-scope command + log row 3
+* e94e020 Task 1: add scaffold-endpoint command
+* 3aed5d1 Task 1: /audit-errors services/tasks.py (process_order fix)
+* bffaa5d Week 6 Task 1: audit-errors final wording + COMMAND_LOG
+* aa9a749 Drill 2 complete
+* 97fedbd Drill 2: Phase 3 notes
+* 1b36d3b Drill 2: fix absolute-path matching in guard_writes
+* 7f2bc8b Drill 2: guard_writes hook v1
