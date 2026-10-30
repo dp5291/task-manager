@@ -117,7 +117,7 @@ def main() -> None:
         payload = json.loads(sys.stdin.buffer.read().decode("utf-8"))
     except (ValueError, UnicodeDecodeError):
         sys.exit(0)
-    if payload.get("tool_name") != "Bash":
+    if payload.get("tool_name") not in ("Bash", "PowerShell"):
         sys.exit(0)
     command = (payload.get("tool_input") or {}).get("command", "")
     cwd = payload.get("cwd")

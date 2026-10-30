@@ -1,4 +1,7 @@
 {
+  "permissions": {
+    "ask": ["Bash(git commit *)", "Bash(git commit)", "PowerShell(git commit *)", "PowerShell(git commit)"]
+  },
   "hooks": {
     "PreToolUse": [
       {
@@ -8,7 +11,7 @@
         ]
       },
       {
-        "matcher": "Bash",
+        "matcher": "Bash|PowerShell",
         "hooks": [
           { "type": "command", "command": "python .claude/hooks/guard_git.py", "timeout": 10 }
         ]
