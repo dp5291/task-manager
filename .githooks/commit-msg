@@ -1,0 +1,25 @@
+#!/bin/sh
+# commit-msg hook for task-manager: enforce conventional commit subjects.
+# Applies to every commit (yours or Claude's) once `git config core.hooksPath .githooks` is set.
+
+subject=$(grep -v '^#' "$1" | tr -d '\r' | sed -n '/[^[:space:]]/{p;q;}')
+
+# Let git's own generated messages through (local merges and reverts).
+case "$subject" in
+  "Merge "*|"Revert "*) exit 0 ;;
+esac
+
+pattern='^(feat|fix|test|refactor|docs|chore)(\([a-z0-9-]+\))?: [^ ](.*[^.])?$'
+
+if ! printf '%s\n' "$subject" | grep -Eq "$pattern"; then
+  echo "commit-msg: rejected subject: \"$subject\"" >&2
+  echo "  Use 'type(scope): subject' or 'type: subject'; types: feat fix test refactor docs chore; no trailing period." >&2
+  exit 1
+fi
+
+if [ "${#subject}" -gt 72 ]; then
+  echo "commit-msg: subject is ${#subject} characters; the limit is 72." >&2
+  exit 1
+fi
+
+exit 0
