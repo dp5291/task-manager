@@ -23,12 +23,13 @@ def get_task_route(task_id):
 @api.route("/tasks/<int:task_id>", methods=["PATCH"])
 def update_task_route(task_id):
     data = _get_json_object()
-    return jsonify(update_task(task_id, data.get("priority")))
+    fields = {key: data[key] for key in ("priority", "due_date") if key in data}
+    return jsonify(update_task(task_id, **fields))
 
 @api.route("/tasks", methods=["POST"])
 def create_task_route():
     data = _get_json_object()
-    extra = {"priority": data["priority"]} if "priority" in data else {}
+    extra = {key: data[key] for key in ("priority", "due_date") if key in data}
     return jsonify(create_task(data.get("title"), data.get("user_id"), **extra)), 201
 
 @api.route("/tasks", methods=["GET"])
@@ -36,7 +37,7 @@ def list_tasks_route():
     sort = request.args.get("sort")
     if sort is not None and sort != "priority":
         raise ValidationError("sort", "must be priority")
-    tasks = list_tasks(request.args.get("priority"))
+    tasks = list_tasks(request.args.get("priority"), request.args.get("overdue"))
     if sort == "priority":
         tasks = sorted(tasks, key=lambda task: (task["priority"], task["id"]))
     return jsonify(tasks)
