@@ -1,7 +1,7 @@
 from datetime import date
 
 import pytest
-from services.tasks import create_task, get_task, get_tasks_for_user, list_tasks, process_order, update_task
+from services.tasks import archive_task, create_task, get_task, get_tasks_for_user, list_tasks, process_order, update_task
 from utils.errors import NotFoundError, ValidationError
 
 def test_process_order_valid():
@@ -182,3 +182,51 @@ def test_list_tasks_overdue_false_returns_all():
 def test_list_tasks_invalid_overdue():
     with pytest.raises(ValidationError):
         list_tasks(overdue="yes")
+
+def test_archive_task_sets_archived():
+    assert archive_task(1)["archived"] is True
+    assert get_task(1)["archived"] is True
+
+def test_archive_task_unknown_id():
+    with pytest.raises(NotFoundError):
+        archive_task(999)
+
+def test_create_task_starts_unarchived():
+    assert create_task("New", 1)["archived"] is False
+
+def test_list_tasks_hides_archived_by_default():
+    archive_task(2)
+    ids = [task["id"] for task in list_tasks()]
+    assert 2 not in ids
+    assert 1 in ids and 3 in ids
+
+def test_list_tasks_include_archived_true():
+    archive_task(2)
+    ids = [task["id"] for task in list_tasks(include_archived="true")]
+    assert 2 in ids
+
+def test_list_tasks_invalid_include_archived():
+    with pytest.raises(ValidationError):
+        list_tasks(include_archived="yes")
+
+@pytest.mark.parametrize("include_archived", [1, 0])
+def test_list_tasks_include_archived_rejects_int(include_archived):
+    with pytest.raises(ValidationError):
+        list_tasks(include_archived=include_archived)
+
+def test_list_tasks_priority_and_archive_filters_combined():
+    created = create_task("Combo", 1, 2)
+    archive_task(created["id"])
+    hidden = list_tasks(2)
+    shown = list_tasks(2, include_archived="true")
+    assert created["id"] not in [task["id"] for task in hidden]
+    assert created["id"] in [task["id"] for task in shown]
+    assert all(task["priority"] == 2 for task in hidden + shown)
+
+def test_list_tasks_overdue_hides_archived_unless_included():
+    late_id = create_task("Late archived", 1, due_date="2026-06-14")["id"]
+    archive_task(late_id)
+    hidden = list_tasks(overdue="true", today=TODAY)
+    shown = list_tasks(overdue="true", include_archived="true", today=TODAY)
+    assert late_id not in [task["id"] for task in hidden]
+    assert late_id in [task["id"] for task in shown]

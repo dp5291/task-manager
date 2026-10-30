@@ -202,3 +202,48 @@ def test_list_tasks_route_invalid_overdue():
     response = app.test_client().get("/api/tasks?overdue=bogus")
     assert response.status_code == 422
     assert response.get_json() == {"error": "Invalid overdue: must be true or false"}
+
+def test_archive_task_route():
+    client = app.test_client()
+    created = client.post("/api/tasks", json={"title": "Archive me", "user_id": 1}).get_json()
+    response = client.post(f"/api/tasks/{created['id']}/archive")
+    assert response.status_code == 200
+    assert response.get_json() == {**created, "archived": True}
+    assert client.get(f"/api/tasks/{created['id']}").get_json()["archived"] is True
+
+def test_archive_task_route_unknown_task():
+    response = app.test_client().post("/api/tasks/999/archive")
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "Task not found"}
+
+def test_list_tasks_route_hides_archived():
+    client = app.test_client()
+    task_id = client.post("/api/tasks", json={"title": "Hide me", "user_id": 1}).get_json()["id"]
+    client.post(f"/api/tasks/{task_id}/archive")
+    response = client.get("/api/tasks")
+    assert response.status_code == 200
+    assert task_id not in [task["id"] for task in response.get_json()]
+
+def test_list_tasks_route_include_archived_true():
+    client = app.test_client()
+    task_id = client.post("/api/tasks", json={"title": "Show me", "user_id": 1}).get_json()["id"]
+    client.post(f"/api/tasks/{task_id}/archive")
+    response = client.get("/api/tasks?include_archived=true")
+    assert response.status_code == 200
+    assert task_id in [task["id"] for task in response.get_json()]
+
+def test_list_tasks_route_invalid_include_archived():
+    response = app.test_client().get("/api/tasks?include_archived=bogus")
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid include_archived: must be true or false"}
+
+def test_list_tasks_route_overdue_hides_archived_unless_included():
+    client = app.test_client()
+    late_id = client.post("/api/tasks", json={"title": "Late archived", "user_id": 1, "due_date": "2000-01-01"}).get_json()["id"]
+    client.post(f"/api/tasks/{late_id}/archive")
+    hidden = client.get("/api/tasks?overdue=true")
+    shown = client.get("/api/tasks?overdue=true&include_archived=true")
+    assert hidden.status_code == 200
+    assert shown.status_code == 200
+    assert late_id not in [task["id"] for task in hidden.get_json()]
+    assert late_id in [task["id"] for task in shown.get_json()]
