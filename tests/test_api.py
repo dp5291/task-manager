@@ -139,3 +139,37 @@ def test_create_task_route_invalid_user_id(body):
     response = app.test_client().post("/api/tasks", json=body)
     assert response.status_code == 422
     assert response.get_json() == {"error": "Invalid user_id: must be an integer"}
+
+def test_archive_task_route():
+    client = app.test_client()
+    created = client.post("/api/tasks", json={"title": "Archive me", "user_id": 1}).get_json()
+    response = client.post(f"/api/tasks/{created['id']}/archive")
+    assert response.status_code == 200
+    assert response.get_json() == {**created, "archived": True}
+    assert client.get(f"/api/tasks/{created['id']}").get_json()["archived"] is True
+
+def test_archive_task_route_unknown_task():
+    response = app.test_client().post("/api/tasks/999/archive")
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "Task not found"}
+
+def test_list_tasks_route_hides_archived():
+    client = app.test_client()
+    task_id = client.post("/api/tasks", json={"title": "Hide me", "user_id": 1}).get_json()["id"]
+    client.post(f"/api/tasks/{task_id}/archive")
+    response = client.get("/api/tasks")
+    assert response.status_code == 200
+    assert task_id not in [task["id"] for task in response.get_json()]
+
+def test_list_tasks_route_include_archived_true():
+    client = app.test_client()
+    task_id = client.post("/api/tasks", json={"title": "Show me", "user_id": 1}).get_json()["id"]
+    client.post(f"/api/tasks/{task_id}/archive")
+    response = client.get("/api/tasks?include_archived=true")
+    assert response.status_code == 200
+    assert task_id in [task["id"] for task in response.get_json()]
+
+def test_list_tasks_route_invalid_include_archived():
+    response = app.test_client().get("/api/tasks?include_archived=bogus")
+    assert response.status_code == 422
+    assert response.get_json() == {"error": "Invalid include_archived: must be true or false"}

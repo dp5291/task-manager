@@ -77,8 +77,25 @@ def create_task(title: str, user_id: int, priority: int = 3) -> dict:
     get_user(user_id)
     new_id = max(TASKS.keys()) + 1
     TASKS[new_id] = {"id": new_id, "title": title,
-                     "done": False, "user_id": user_id, "priority": priority}
+                     "done": False, "user_id": user_id, "priority": priority,
+                     "archived": False}
     return TASKS[new_id]
+
+def archive_task(task_id: int) -> dict:
+    """Mark a task as archived.
+
+    Args:
+        task_id: The unique identifier for the task.
+
+    Returns:
+        The updated task record.
+
+    Raises:
+        NotFoundError: If no task exists with the given ID.
+    """
+    task = get_task(task_id)
+    task["archived"] = True
+    return task
 
 def update_task(task_id: int, priority: int) -> dict:
     """Update a task's priority.
@@ -114,22 +131,34 @@ def get_tasks_for_user(user_id: int) -> list[dict]:
     get_user(user_id)
     return [task for task in TASKS.values() if task["user_id"] == user_id]
 
-def list_tasks(priority: int | str | None = None) -> list[dict]:
+def list_tasks(priority: int | str | None = None,
+               include_archived: bool | str | None = None) -> list[dict]:
     """Retrieve all tasks, optionally filtered by priority.
 
     Args:
         priority: Integer from 1 (urgent) to 5 (low), or its digit-string
             form (e.g. from a query string). None returns every task.
+        include_archived: True or "true" to include archived tasks; None,
+            False or "false" hides them. Defaults to None.
 
     Returns:
         A list of task records, empty if none match.
 
     Raises:
-        ValidationError: If priority is not an integer from 1 to 5.
+        ValidationError: If priority is not an integer from 1 to 5, or
+            include_archived is not true or false.
     """
+    if include_archived is None or include_archived is False or include_archived == "false":
+        include_archived = False
+    elif include_archived is True or include_archived == "true":
+        include_archived = True
+    else:
+        raise ValidationError("include_archived", "must be true or false")
+    tasks = [task for task in TASKS.values()
+             if include_archived or not task.get("archived", False)]
     if priority is None:
-        return list(TASKS.values())
+        return tasks
     if isinstance(priority, str) and priority.isascii() and priority.isdigit():
         priority = int(priority)
     _check_priority(priority)
-    return [task for task in TASKS.values() if task["priority"] == priority]
+    return [task for task in tasks if task["priority"] == priority]

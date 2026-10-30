@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from services.tasks import get_task, create_task, process_order, list_tasks, update_task
+from services.tasks import get_task, create_task, process_order, list_tasks, update_task, archive_task
 from services.tags import create_tag
 from services.users import get_user, list_users, get_notification_pref, set_notification_pref
 from utils.errors import AppError, ValidationError
@@ -25,6 +25,10 @@ def update_task_route(task_id):
     data = _get_json_object()
     return jsonify(update_task(task_id, data.get("priority")))
 
+@api.route("/tasks/<int:task_id>/archive", methods=["POST"])
+def archive_task_route(task_id):
+    return jsonify(archive_task(task_id))
+
 @api.route("/tasks", methods=["POST"])
 def create_task_route():
     data = _get_json_object()
@@ -36,7 +40,7 @@ def list_tasks_route():
     sort = request.args.get("sort")
     if sort is not None and sort != "priority":
         raise ValidationError("sort", "must be priority")
-    tasks = list_tasks(request.args.get("priority"))
+    tasks = list_tasks(request.args.get("priority"), request.args.get("include_archived"))
     if sort == "priority":
         tasks = sorted(tasks, key=lambda task: (task["priority"], task["id"]))
     return jsonify(tasks)
