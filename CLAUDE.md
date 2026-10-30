@@ -43,3 +43,14 @@ Requests flow one way: routes → services → repositories.
 
 ## Hooks
 `.claude/hooks/guard_writes.py` is a PreToolUse hook, registered in `.claude/settings.json` with matcher `Write|Edit|MultiEdit|Bash`, that blocks a tool call before it runs by exiting with code 2 (its stderr message is shown to Claude). It blocks any write to the paths in `BLOCKED_PATHS` (`utils/errors.py`, `requirements.txt`, `DRILL_PROMPTS.md`, `migrations/`, `.env`, `.claude/settings.json` and the hook itself), matched case-insensitively on absolute paths, including Bash commands that write to them (`>`, `tee`, `sed -i`, `cp`, `Set-Content`, ...). It also blocks Bash commands matching `BLOCKED_COMMANDS` (`DROP`/`TRUNCATE TABLE`, `rm -rf`, `git push --force`) and writes to `services/tasks.py` that contain a `postgresql://` or `sqlite:///` connection string. To add a rule, edit the hook by hand (Claude is blocked from editing it): add a repo-relative path to `BLOCKED_PATHS`, a `(re.compile(r"..."), "reason")` pair to `BLOCKED_COMMANDS`, or a path to `CONTENT_GUARDED_PATHS`. Then pipe a sample call into it, e.g. `'{"tool_name":"Write","tool_input":{"file_path":"<path>","content":"x"}}' | python .claude/hooks/guard_writes.py; $LASTEXITCODE`, confirm exit 2 for the blocked case and 0 for a normal write, and run `pytest -q` before committing.
+
+## Git Conventions
+- Commit subject: `type(scope): subject`. Types: `feat`, `fix`, `test`, `refactor`, `docs`, `chore`. Scopes: `tasks`, `users`, `tags`, `api`, `tests`, `hooks`, `claude`, `db` (e.g. `feat(tasks): add due_date to create_task`).
+- Subject: imperative ("add", not "added"), lower-case after the colon, no trailing period, 72 characters max; one logical change per commit.
+- Branches: `feat/<topic>` or `fix/<topic>` (e.g. `feat/task-archiving`); `claude --worktree <name>` branches named `worktree-<name>` are fine for feature work.
+- Before every commit run `pytest -q` (all tests must pass) and `ruff check services/ utils/`; commit through `/ship`.
+- A test whose expected value must change after a merge gets a one-line reason in the commit body; never delete or loosen it.
+- Never push to `main` or `master`; feature branches are merged into `main` locally after review.
+- Never force-push (`--force`, `-f`, `--force-with-lease`) or skip hooks (`--no-verify`, `git commit -n`).
+- Never change `core.hooksPath` or edit `.githooks/`; `.githooks/commit-msg` enforces the subject format.
+- Do not commit `tasks.db` changes made while testing; reset it with `python create_db.py`.
